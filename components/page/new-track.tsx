@@ -12,7 +12,7 @@ type Props = {
   onAdd: (v: Track[]) => void;
 };
 
-const API_KEY = "AIzaSyDaTtPGgWcZC2hTtnMvjb5qbFKn8fjnfeE";
+const API_KEY = process.env.NEXT_PUBLIC_YT_API_KEY;
 
 const NewTrack = ({ onAdd }: Props) => {
   const [newTrackUrl, setNewTrackUrl] = useState("");
