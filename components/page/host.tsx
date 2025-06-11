@@ -4,11 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Reorder } from "framer-motion";
-import { GripVertical, Play, Trash2 } from "lucide-react";
+import { GripVertical, MoreVertical, Play, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import YouTubePlayer from "youtube-player";
 import NewTrack from "./new-track";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+} from "../ui/dropdown-menu";
+import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
 
 const SOCKET_URL =
   process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3000";
@@ -39,9 +45,11 @@ const Host = () => {
       }
       setTimeout(setupPlayer, 1000);
     });
+
     socketRef.current.on("room-tracks", (tracks: Track[]) => {
       if (tracks) setTracks(tracks);
     });
+
     socketRef.current.on(
       "current-playing-change",
       ({ index }: { index: number }) => {
@@ -83,6 +91,7 @@ const Host = () => {
   const setupPlayer = () => {
     const player = YouTubePlayer("video-player", { width: 300, height: 180 });
     player.on("stateChange", async (event: any) => {
+      console.log("🚀 - player.on - event:", event);
       if (event.data === 0) {
         setCurrentTrackIndex((index) => index + 1);
       }
@@ -130,7 +139,7 @@ const Host = () => {
             id="roomId"
             placeholder="RoomId"
             value={newRoomId}
-            onChange={(e) => setNewRoomId(e.target.value)}
+            onChange={(e) => setNewRoomId(e.target.value.toUpperCase())}
             onKeyDown={(e) => {
               if (e.key === "Enter") createRoom();
             }}
@@ -226,6 +235,56 @@ const Host = () => {
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-gray-400 hover:text-white hover:bg-white/10"
+                            onClick={(e) => e.stopPropagation()} // prevent click from selecting the item
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          side="bottom"
+                          align="end"
+                          className="bg-black border border-white/10 rounded-md p-1 min-w-[140px] z-50"
+                        >
+                          <DropdownMenuItem
+                            onClick={() => {
+                              const newOrder = [...tracks];
+                              newOrder.splice(index, 1);
+                              newOrder.splice(currentTrackIndex + 1, 0, track);
+
+                              setTracks(newOrder);
+                              socketRef.current.emit("update-tracks", {
+                                roomId: roomId,
+                                tracks: newOrder,
+                              });
+                            }}
+                            className="px-2 py-1.5 text-sm text-white hover:bg-white/10 cursor-pointer"
+                          >
+                            Play Next
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              const newOrder = [...tracks];
+                              newOrder.splice(index, 1);
+                              newOrder.splice(currentTrackIndex + 1, 0, track);
+                              setCurrentTrackIndex(currentTrackIndex + 1);
+                              setTracks(newOrder);
+                              socketRef.current.emit("update-tracks", {
+                                roomId: roomId,
+                                tracks: newOrder,
+                              });
+                            }}
+                            className="px-2 py-1.5 text-sm text-white hover:bg-white/10 cursor-pointer"
+                          >
+                            Stop and Play
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </Reorder.Item>
                   ))}
                   {tracks.length === 0 && (

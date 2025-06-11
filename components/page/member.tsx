@@ -5,10 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Track } from "@/lib/type";
 import { Reorder } from "framer-motion";
-import { GripVertical, Play, Trash2 } from "lucide-react";
+import { GripVertical, Play, RefreshCcw, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import NewTrack from "./new-track";
+import { toast } from "react-toastify";
 
 const SOCKET_URL =
   process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3000";
@@ -20,6 +21,7 @@ const Member = () => {
   const [tracks, setTracks] = useState<Track[]>([]);
   const [activeVideo, setActiveVideo] = useState("");
   const [roomConfig, setRoomConfig] = useState<any>({ roomId: "" });
+  const [syncWithHost, setSyncWithHost] = useState(false);
 
   useEffect(() => {
     socketRef.current = io(SOCKET_URL);
@@ -28,9 +30,11 @@ const Member = () => {
       if (data.type === "SUCCESS") {
         setRoomConfig(data);
         setTracks((e) => {
-          setActiveVideo(e[data.currentPlaying].videoId!);
+          setActiveVideo(e[data.currentPlaying]?.videoId!);
           return e;
         });
+      } else {
+        toast.error(data.message || "Something went wrong");
       }
     });
 
@@ -86,6 +90,12 @@ const Member = () => {
     });
   };
 
+  // const handelSync = () => {
+  //   socketRef.current.emit("sync-request-with-host", {
+  //     roomId: roomConfig.roomId,
+  //   });
+  // };
+
   if (!roomConfig.roomId)
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white">
@@ -95,7 +105,7 @@ const Member = () => {
             id="roomId"
             placeholder="RoomId"
             value={newRoomId}
-            onChange={(e) => setNewRoomId(e.target.value)}
+            onChange={(e) => setNewRoomId(e.target.value.toUpperCase())}
             onKeyDown={(e) => {
               if (e.key === "Enter") joinRoom();
             }}
@@ -115,6 +125,10 @@ const Member = () => {
         </h1>
         <div className="flex max-md:flex-col gap-4 w-full">
           <div className="flex-1 space-y-4 md:max-w-[500px]">
+            {/* <Button onClick={handelSync} className="w-full">
+              <RefreshCcw className="w-4 h-4 mr-2" />
+              Sync with Host
+            </Button> */}
             <NewTrack onAdd={addTrack} />
           </div>
           <Card className="bg-black/20 backdrop-blur-sm border-white/10 flex-[2]">
