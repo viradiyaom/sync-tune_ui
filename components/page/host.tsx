@@ -15,6 +15,7 @@ import {
   DropdownMenuItem,
 } from "../ui/dropdown-menu";
 import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
+import { toast } from "react-toastify";
 
 const SOCKET_URL =
   process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3000";
@@ -42,6 +43,8 @@ const Host = () => {
       setLoading(false);
       if (data.type === "SUCCESS") {
         setRoomId(data.roomId);
+      } else {
+        toast.error(data.message || "Something went wrong");
       }
       setTimeout(setupPlayer, 1000);
     });
@@ -59,6 +62,33 @@ const Host = () => {
       }
     );
 
+    socketRef.current.on(
+      "sync-request-for-host",
+      async ({ roomId }: { roomId: string }) => {
+        // let i = 0;
+        // const interval = setInterval(async () => {
+        //   if (i > 3) {
+        //     return clearInterval(interval);
+        //   }
+        const player = ytPlayer.current;
+        console.log("🚀 - interval - player:", player);
+        const currentTime = await player.getCurrentTime();
+        const playerState = await player.getPlayerState();
+        setActiveVideo((videoId) => {
+          socketRef.current.emit("sync-response-from-host", {
+            roomId,
+            type: "TIME",
+            playerState,
+            currentTime,
+            videoId,
+          });
+          return videoId;
+        });
+
+        //   i++;
+        // }, 1000);
+      }
+    );
     return () => {
       socketRef.current.disconnect();
     };
@@ -105,11 +135,6 @@ const Host = () => {
   };
 
   const addTrack = (newTrack: Track[]) => {
-    socketRef.current.emit("join-room-response", (data: any) => {
-      if (data.type === "success") {
-        setRoomId(data.roomId);
-      }
-    });
     socketRef.current.emit("add-track", {
       roomId: roomId,
       tracks: newTrack,

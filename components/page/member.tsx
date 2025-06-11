@@ -10,17 +10,21 @@ import { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import NewTrack from "./new-track";
 import { toast } from "react-toastify";
+import YouTubePlayer from "youtube-player";
+import { set } from "date-fns";
 
 const SOCKET_URL =
   process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3000";
 
 const Member = () => {
+  const ytPlayer = useRef<any>(null);
   const socketRef = useRef<any>(null);
   const [loading, setLoading] = useState(false);
   const [newRoomId, setNewRoomId] = useState("");
   const [tracks, setTracks] = useState<Track[]>([]);
   const [activeVideo, setActiveVideo] = useState("");
   const [roomConfig, setRoomConfig] = useState<any>({ roomId: "" });
+  const [currentTrackIndex, setCurrentTrackIndex] = useState(-1);
   const [syncWithHost, setSyncWithHost] = useState(false);
 
   useEffect(() => {
@@ -42,9 +46,32 @@ const Member = () => {
       setTracks(tracks);
     });
 
+    socketRef.current.on("sync-response-from-host", (data: any) => {
+      console.log("wdasxz", data);
+      if (data.type === "TIME") {
+        if (data.playerState === 1) {
+          if (ytPlayer.current) {
+            ytPlayer.current.loadVideoById(data.videoId);
+            ytPlayer.current.seekTo(data.currentTime, true);
+            ytPlayer.current.playVideo();
+            return;
+          }
+          setTimeout(async () => {
+            setActiveVideo(data.videoId!);
+            ytPlayer.current.loadVideoById(data.videoId);
+            await ytPlayer.current.playVideo();
+            setTimeout(() => {
+              ytPlayer.current.seekTo(data.currentTime + 4, true);
+            }, 3000);
+          }, 4000);
+        }
+      }
+    });
+
     socketRef.current.on(
       "current-playing-change",
       ({ index }: { index: number }) => {
+        setCurrentTrackIndex(index);
         setTracks((e) => {
           setActiveVideo(e[index].videoId!);
           return e;
@@ -60,6 +87,17 @@ const Member = () => {
   useEffect(() => {
     document.getElementById("roomId")?.focus();
   }, []);
+
+  useEffect(() => {
+    const currentTrack = tracks[currentTrackIndex];
+    if (!ytPlayer.current || currentTrackIndex < 0) return;
+    if (!currentTrack) {
+      setCurrentTrackIndex(0);
+      return;
+    }
+    setActiveVideo(currentTrack.videoId!);
+    ytPlayer.current.loadVideoById(currentTrack.videoId);
+  }, [currentTrackIndex]);
 
   const joinRoom = () => {
     setLoading(true);
@@ -90,11 +128,20 @@ const Member = () => {
     });
   };
 
-  // const handelSync = () => {
-  //   socketRef.current.emit("sync-request-with-host", {
-  //     roomId: roomConfig.roomId,
-  //   });
-  // };
+  const handelSync = () => {
+    setSyncWithHost((e) => !e);
+    if (syncWithHost) {
+      return;
+    }
+    socketRef.current.emit("sync-request-with-host", {
+      roomId: roomConfig.roomId,
+    });
+
+    setTimeout(() => {
+      const player = YouTubePlayer("video-player", { width: 300, height: 180 });
+      ytPlayer.current = player;
+    }, 1000);
+  };
 
   if (!roomConfig.roomId)
     return (
@@ -125,10 +172,17 @@ const Member = () => {
         </h1>
         <div className="flex max-md:flex-col gap-4 w-full">
           <div className="flex-1 space-y-4 md:max-w-[500px]">
-            {/* <Button onClick={handelSync} className="w-full">
+            <Button onClick={handelSync} className="w-full">
               <RefreshCcw className="w-4 h-4 mr-2" />
-              Sync with Host
-            </Button> */}
+              {syncWithHost ? "Pause Sync" : "Sync with Host"}
+            </Button>
+            {syncWithHost && (
+              <Card className="bg-black/20 backdrop-blur-sm border-white/10 ">
+                <CardContent className="p-6 flex justify-center items-center">
+                  <div id="video-player" />
+                </CardContent>
+              </Card>
+            )}
             <NewTrack onAdd={addTrack} />
           </div>
           <Card className="bg-black/20 backdrop-blur-sm border-white/10 flex-[2]">
