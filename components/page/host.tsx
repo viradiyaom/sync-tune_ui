@@ -36,8 +36,8 @@ const Host = () => {
   const [loading, setLoading] = useState(false);
   const [newRoomId, setNewRoomId] = useState("");
   const [tracks, setTracks] = useState<Track[]>([]);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [activeVideo, setActiveVideo] = useState("");
+  const [isPlaying, setIsPlaying] = useState(false);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(-1);
 
   useEffect(() => {
