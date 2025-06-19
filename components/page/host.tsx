@@ -87,18 +87,20 @@ const Host = () => {
       //   }
       const player = ytPlayer.current;
       console.log("🚀 - //interval - player:", player);
+      const time = +new Date();
       const currentTime = await player.getCurrentTime();
       const playerState = await player.getPlayerState();
-      socketRef.current.emit("sync-response", {
-        type: "TIME",
-        playerState,
-        currentTime,
-        // videoId,
-      });
-      // setActiveVideo((videoId) => {
 
-      //   return videoId;
-      // });
+      setActiveVideo((videoId) => {
+        socketRef.current.emit("sync-response", {
+          type: "TIME",
+          playerState,
+          time,
+          currentTime,
+          videoId,
+        });
+        return videoId;
+      });
 
       //   i++;
       // }, 1000);

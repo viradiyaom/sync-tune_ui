@@ -54,20 +54,23 @@ const Member = () => {
     });
 
     socketRef.current.on("sync-response", (data: any) => {
+      console.log("🚀 - socketRef.current.on - data:", data);
       if (data.type === "TIME") {
         if (data.playerState === 1) {
-          if (ytPlayer.current) {
-            ytPlayer.current.loadVideoById(data.videoId);
-            ytPlayer.current.seekTo(data.currentTime, true);
-            ytPlayer.current.playVideo();
-            return;
-          }
+          // if (ytPlayer.current) {
+          //   ytPlayer.current.loadVideoById(data.videoId);
+          //   // ytPlayer.current.seekTo(data.currentTime, true);
+          //   return;
+          // }
           setTimeout(async () => {
             setActiveVideo(data.videoId!);
             ytPlayer.current.loadVideoById(data.videoId);
             await ytPlayer.current.playVideo();
-            ytPlayer.current.seekTo(data.currentTime + 4, true);
-          }, 4000);
+            setTimeout(() => {
+              const addTime = (+new Date() - data.time) / 1000 + 0.5;
+              ytPlayer.current.seekTo(data.currentTime + addTime, true);
+            }, 1000);
+          }, 1000);
         }
       }
     });
@@ -75,7 +78,12 @@ const Member = () => {
     socketRef.current.on(
       "update-current-playing",
       ({ index }: { index: number }) => {
-        setCurrentTrackIndex(index);
+        setCurrentTrackIndex((e) => {
+          if (e === index) {
+            ytPlayer.current.pauseVideo();
+          }
+          return index;
+        });
         setTracks((e) => {
           setActiveVideo(e[index].videoId!);
           return e;
