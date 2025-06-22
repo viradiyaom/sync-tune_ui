@@ -44,17 +44,14 @@ const Container = () => {
 };
 export default function MusicPlayer() {
   return (
-    // <Suspense
-    //   fallback={
-    //     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white p-4">
-    //       <Loader2 className="h-8 w-8 animate-spin text-zinc-600" />
-    //     </div>
-    //   }
-    // >
-    //   <Container />
-    // </Suspense>
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white p-4">
-      <Loader2 className="h-8 w-8 animate-spin" />
-    </div>
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white p-4">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      }
+    >
+      <Container />
+    </Suspense>
   );
 }
