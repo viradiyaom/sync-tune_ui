@@ -224,7 +224,7 @@ const Host = () => {
 
   if (!roomId)
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white">
+      <>
         <h1 className="text-3xl font-bold mb-6">Create Room Id</h1>
         <div className="flex gap-2">
           <Input
@@ -241,169 +241,167 @@ const Host = () => {
             Create Room
           </Button>
         </div>
-      </div>
+      </>
     );
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 p-4">
-      <div className="max-w-[1500px] w-full mx-auto space-y-6">
-        <h1 className="text-4xl font-bold text-white text-center mb-8">
-          Sync Tune
-        </h1>
+    <div className="max-w-[1500px] w-full mx-auto space-y-6">
+      <h1 className="text-4xl font-bold text-white text-center mb-8">
+        Sync Tune
+      </h1>
 
-        <div className="flex max-md:flex-col gap-4 w-full">
-          <div className="flex-1 space-y-4 md:max-w-[500px]">
-            <Card className="bg-black/20 backdrop-blur-sm border-white/10 ">
-              <CardContent className="p-6 flex justify-between items-center">
-                <p className="font-bold text-white">Joining Code : {roomId}</p>
-                <button onClick={() => shareRoom(roomId)}>
-                  <Share2 className="stroke-white" />
-                </button>
-              </CardContent>
-            </Card>
-            <Card className="bg-black/20 backdrop-blur-sm border-white/10 ">
-              <CardContent className="p-6 flex justify-center items-center">
-                <div id="video-player" />
-              </CardContent>
-            </Card>
-            <NewTrack onAdd={addTrack} />
-          </div>
-          <Card className="bg-black/20 backdrop-blur-sm border-white/10 flex-[2]">
-            <CardHeader>
-              <CardTitle className="text-white !flex justify-between">
-                Playlist ({tracks.length} tracks)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="max-h-[calc(100vh-205px)] overflow-y-auto">
-                <Reorder.Group
-                  axis="y"
-                  values={tracks}
-                  onReorder={(newOrder) => {
-                    setTracks(newOrder);
-                    socketRef.current.emit("update-tracks", {
-                      tracks: newOrder,
-                    });
-                  }}
-                  className="space-y-2 pr-2"
-                >
-                  {tracks.map((track, index) => (
-                    <Reorder.Item
-                      key={track.id}
-                      value={track}
-                      className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
-                        activeVideo === track.videoId
-                          ? "bg-white/20 border border-white/30"
-                          : "bg-white/5 hover:bg-white/10"
-                      }`}
-                    >
-                      <div className="flex items-center space-x-3 flex-1">
-                        <div className="cursor-move text-gray-400 hover:text-white">
-                          <GripVertical className="w-4 h-4" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <p className="text-white font-medium line-clamp-1 overflow-hidden break-all">
-                              {track.title}
-                            </p>
-                            <span className="bg-red-600 text-white text-xs px-1.5 py-0.5 rounded">
-                              YouTube
-                            </span>
-                          </div>
-                          <p className="text-gray-400 text-sm">
-                            Track {index + 1}
-                          </p>
-                        </div>
+      <div className="flex max-md:flex-col gap-4 w-full">
+        <div className="flex-1 space-y-4 md:max-w-[500px]">
+          <Card className="bg-black/20 backdrop-blur-sm border-white/10 ">
+            <CardContent className="p-6 flex justify-between items-center">
+              <p className="font-bold text-white">Joining Code : {roomId}</p>
+              <button onClick={() => shareRoom(roomId)}>
+                <Share2 className="stroke-white" />
+              </button>
+            </CardContent>
+          </Card>
+          <Card className="bg-black/20 backdrop-blur-sm border-white/10 ">
+            <CardContent className="p-6 flex justify-center items-center">
+              <div id="video-player" />
+            </CardContent>
+          </Card>
+          <NewTrack onAdd={addTrack} />
+        </div>
+        <Card className="bg-black/20 backdrop-blur-sm border-white/10 flex-[2]">
+          <CardHeader>
+            <CardTitle className="text-white !flex justify-between">
+              Playlist ({tracks.length} tracks)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="max-h-[calc(100vh-205px)] overflow-y-auto">
+              <Reorder.Group
+                axis="y"
+                values={tracks}
+                onReorder={(newOrder) => {
+                  setTracks(newOrder);
+                  socketRef.current.emit("update-tracks", {
+                    tracks: newOrder,
+                  });
+                }}
+                className="space-y-2 pr-2"
+              >
+                {tracks.map((track, index) => (
+                  <Reorder.Item
+                    key={track.id}
+                    value={track}
+                    className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors ${
+                      activeVideo === track.videoId
+                        ? "bg-white/20 border border-white/30"
+                        : "bg-white/5 hover:bg-white/10"
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3 flex-1">
+                      <div className="cursor-move text-gray-400 hover:text-white">
+                        <GripVertical className="w-4 h-4" />
                       </div>
-                      <Button
-                        variant={"ghost"}
-                        size="icon"
-                        onClick={() => selectTrack(index)}
-                        className="text-gray-400 hover:text-red-400 hover:bg-red-400/10"
-                      >
-                        {activeVideo === track.videoId && isPlaying ? (
-                          <Pause className="w-4 h-4" />
-                        ) : (
-                          <Play className="w-4 h-4" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          removeTrack(track.id);
-                        }}
-                        className="text-gray-400 hover:text-red-400 hover:bg-red-400/10"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-gray-400 hover:text-white hover:bg-white/10"
-                            onClick={(e) => e.stopPropagation()} // prevent click from selecting the item
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent
-                          side="bottom"
-                          align="end"
-                          className="bg-black border border-white/10 rounded-md p-1 min-w-[140px] z-50"
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <p className="text-white font-medium line-clamp-1 overflow-hidden break-all">
+                            {track.title}
+                          </p>
+                          <span className="bg-red-600 text-white text-xs px-1.5 py-0.5 rounded">
+                            YouTube
+                          </span>
+                        </div>
+                        <p className="text-gray-400 text-sm">
+                          Track {index + 1}
+                        </p>
+                      </div>
+                    </div>
+                    <Button
+                      variant={"ghost"}
+                      size="icon"
+                      onClick={() => selectTrack(index)}
+                      className="text-gray-400 hover:text-red-400 hover:bg-red-400/10"
+                    >
+                      {activeVideo === track.videoId && isPlaying ? (
+                        <Pause className="w-4 h-4" />
+                      ) : (
+                        <Play className="w-4 h-4" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeTrack(track.id);
+                      }}
+                      className="text-gray-400 hover:text-red-400 hover:bg-red-400/10"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-gray-400 hover:text-white hover:bg-white/10"
+                          onClick={(e) => e.stopPropagation()} // prevent click from selecting the item
                         >
-                          <DropdownMenuItem
-                            onClick={() => {
-                              const newOrder = [...tracks];
-                              newOrder.splice(index, 1);
-                              newOrder.splice(currentTrackIndex + 1, 0, track);
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent
+                        side="bottom"
+                        align="end"
+                        className="bg-black border border-white/10 rounded-md p-1 min-w-[140px] z-50"
+                      >
+                        <DropdownMenuItem
+                          onClick={() => {
+                            const newOrder = [...tracks];
+                            newOrder.splice(index, 1);
+                            newOrder.splice(currentTrackIndex + 1, 0, track);
 
-                              setTracks(newOrder);
-                              socketRef.current.emit("update-tracks", {
-                                tracks: newOrder,
-                              });
-                            }}
-                            className="px-2 py-1.5 text-sm text-white hover:bg-white/10 cursor-pointer"
-                          >
-                            Play Next
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => {
-                              const newOrder = [...tracks];
-                              newOrder.splice(index, 1);
-                              newOrder.splice(currentTrackIndex + 1, 0, track);
-                              setCurrentTrackIndex(currentTrackIndex + 1);
-                              setTracks(newOrder);
-                              socketRef.current.emit("update-tracks", {
-                                tracks: newOrder,
-                              });
-                            }}
-                            className="px-2 py-1.5 text-sm text-white hover:bg-white/10 cursor-pointer"
-                          >
-                            Stop and Play
-                          </DropdownMenuItem>
-                          {/* <DropdownMenuItem
+                            setTracks(newOrder);
+                            socketRef.current.emit("update-tracks", {
+                              tracks: newOrder,
+                            });
+                          }}
+                          className="px-2 py-1.5 text-sm text-white hover:bg-white/10 cursor-pointer"
+                        >
+                          Play Next
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => {
+                            const newOrder = [...tracks];
+                            newOrder.splice(index, 1);
+                            newOrder.splice(currentTrackIndex + 1, 0, track);
+                            setCurrentTrackIndex(currentTrackIndex + 1);
+                            setTracks(newOrder);
+                            socketRef.current.emit("update-tracks", {
+                              tracks: newOrder,
+                            });
+                          }}
+                          className="px-2 py-1.5 text-sm text-white hover:bg-white/10 cursor-pointer"
+                        >
+                          Stop and Play
+                        </DropdownMenuItem>
+                        {/* <DropdownMenuItem
                             onClick={() => addRelativeVideos(track.videoId!)}
                             className="px-2 py-1.5 text-sm text-white hover:bg-white/10 cursor-pointer"
                           >
                             Add Relative Songs
                           </DropdownMenuItem> */}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </Reorder.Item>
-                  ))}
-                  {tracks.length === 0 && (
-                    <p className="text-gray-400 text-center py-8">
-                      No tracks in playlist
-                    </p>
-                  )}
-                </Reorder.Group>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </Reorder.Item>
+                ))}
+                {tracks.length === 0 && (
+                  <p className="text-gray-400 text-center py-8">
+                    No tracks in playlist
+                  </p>
+                )}
+              </Reorder.Group>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
