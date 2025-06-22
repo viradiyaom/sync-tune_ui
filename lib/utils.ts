@@ -16,3 +16,19 @@ export const extractYouTubePlaylistId = (url: string): string | null => {
   const match = url.match(regExp);
   return match ? match[1] : null;
 };
+
+export const shareRoom = (roomId: string) => {
+  const roomLink = `${window.location.origin}/?memberId=${roomId}`;
+  navigator
+    .share({
+      title: "🎶 Join me on Sync-Tune!",
+      text: `I'm listening to music in sync with friends. Click the link below to join the room and vibe together in real-time:
+
+👉 ${roomLink}
+
+No install needed — just join and enjoy the music! 🎧
+        `,
+    })
+    .then(() => console.log("Shared successfully"))
+    .catch((error) => console.error("Sharing failed", error));
+};

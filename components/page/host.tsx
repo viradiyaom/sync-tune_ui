@@ -3,19 +3,27 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { shareRoom } from "@/lib/utils";
+import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
 import { Reorder } from "framer-motion";
-import { GripVertical, MoreVertical, Pause, Play, Trash2 } from "lucide-react";
+import {
+  GripVertical,
+  MoreVertical,
+  Pause,
+  Play,
+  Share2,
+  Trash2,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "react-toastify";
 import io from "socket.io-client";
 import YouTubePlayer from "youtube-player";
-import NewTrack from "./new-track";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
 } from "../ui/dropdown-menu";
-import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
-import { toast } from "react-toastify";
+import NewTrack from "./new-track";
 
 const SOCKET_URL =
   process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3000";
@@ -248,6 +256,9 @@ const Host = () => {
             <Card className="bg-black/20 backdrop-blur-sm border-white/10 ">
               <CardContent className="p-6 flex justify-between items-center">
                 <p className="font-bold text-white">Joining Code : {roomId}</p>
+                <button onClick={() => shareRoom(roomId)}>
+                  <Share2 className="stroke-white" />
+                </button>
               </CardContent>
             </Card>
             <Card className="bg-black/20 backdrop-blur-sm border-white/10 ">

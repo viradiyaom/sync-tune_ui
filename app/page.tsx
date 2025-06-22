@@ -4,29 +4,40 @@ import Host from "@/components/page/host";
 import Member from "@/components/page/member";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
 export default function MusicPlayer() {
+  const router = useRouter();
   const [role, setRole] = useState("");
+  const searchParams = useSearchParams();
 
-  if (!role) {
+  const memberId = useMemo(() => searchParams.get("memberId"), [searchParams]);
+
+  if (role || memberId)
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white">
-        <h1 className="text-3xl font-bold mb-6">Choose your role</h1>
-        <div className="flex gap-4">
-          <Button onClick={() => setRole("host")}>Host</Button>
-          <Button onClick={() => setRole("member")}>Member</Button>
-        </div>
-      </div>
+      <>
+        <Button
+          className="absolute top-4 left-4"
+          onClick={() => {
+            setRole("");
+            router.replace("/");
+          }}
+        >
+          <ArrowLeft />
+        </Button>
+        {role === "host" && <Host />}
+        {(role === "member" || memberId) && <Member />}
+      </>
     );
-  }
+
   return (
-    <>
-      <Button className="absolute top-4 left-4" onClick={() => setRole("")}>
-        <ArrowLeft />
-      </Button>
-      {role === "host" && <Host />}
-      {role === "member" && <Member />}
-    </>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white">
+      <h1 className="text-3xl font-bold mb-6">Choose your role</h1>
+      <div className="flex gap-4">
+        <Button onClick={() => setRole("host")}>Host</Button>
+        <Button onClick={() => setRole("member")}>Member</Button>
+      </div>
+    </div>
   );
 }

@@ -4,21 +4,31 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Track } from "@/lib/type";
+import { shareRoom } from "@/lib/utils";
 import { Reorder } from "framer-motion";
-import { GripVertical, Pause, Play, RefreshCcw, Trash2 } from "lucide-react";
+import {
+  GripVertical,
+  Pause,
+  Play,
+  RefreshCcw,
+  Share2,
+  Trash2,
+} from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import io from "socket.io-client";
-import NewTrack from "./new-track";
 import { toast } from "react-toastify";
+import io from "socket.io-client";
 import YouTubePlayer from "youtube-player";
-import { set } from "date-fns";
+import NewTrack from "./new-track";
 
 const SOCKET_URL =
   process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3000";
 
 const Member = () => {
+  const router = useRouter();
   const ytPlayer = useRef<any>(null);
   const socketRef = useRef<any>(null);
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [newRoomId, setNewRoomId] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
@@ -40,6 +50,7 @@ const Member = () => {
           return e;
         });
       } else {
+        router.replace("/");
         toast.error(data.message || "Something went wrong");
       }
     });
@@ -51,6 +62,7 @@ const Member = () => {
     socketRef.current.on("clear-state", () => {
       toast.error("Host disconnected");
       setRoomConfig({ roomId: "" });
+      router.replace("/");
     });
 
     socketRef.current.on("sync-response", (data: any) => {
@@ -97,8 +109,13 @@ const Member = () => {
   }, []);
 
   useEffect(() => {
-    document.getElementById("roomId")?.focus();
-  }, []);
+    const memberId = searchParams.get("memberId");
+    if (memberId) {
+      joinRoom(memberId);
+    } else {
+      document.getElementById("roomId")?.focus();
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const currentTrack = tracks[currentTrackIndex];
@@ -111,9 +128,9 @@ const Member = () => {
     ytPlayer.current.loadVideoById(currentTrack.videoId);
   }, [currentTrackIndex]);
 
-  const joinRoom = () => {
+  const joinRoom = (id?: string) => {
     setLoading(true);
-    socketRef.current.emit("join-room", newRoomId);
+    socketRef.current.emit("join-room", id || newRoomId);
   };
 
   const addTrack = (newTrack: Track[]) => {
@@ -171,7 +188,7 @@ const Member = () => {
             }}
             className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
           />
-          <Button onClick={joinRoom} disabled={!newRoomId || loading}>
+          <Button onClick={() => joinRoom()} disabled={!newRoomId || loading}>
             Join Room
           </Button>
         </div>
@@ -201,6 +218,9 @@ const Member = () => {
                 <p className="font-bold text-white">
                   Joining Code : {roomConfig.roomId}
                 </p>
+                <button onClick={() => shareRoom(roomConfig.roomId)}>
+                  <Share2 className="stroke-white" />
+                </button>
               </CardContent>
             </Card>
             <NewTrack onAdd={addTrack} />
