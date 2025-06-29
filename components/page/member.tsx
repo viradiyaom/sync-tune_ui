@@ -158,11 +158,21 @@ const Member = () => {
     socket.current.emit("join-room", id || newRoomId);
   };
 
-  const addTrack = (newTrack: Track[]) => {
-    socket.current.emit("add-track", {
-      tracks: newTrack,
+  const addTrack = (newTrack: Track[], addNext = false) => {
+    setTracks((prev) => {
+      const finalTracks = [...prev];
+
+      if (addNext) {
+        finalTracks.splice(currentTrackIndex + 1, 0, ...newTrack);
+      } else {
+        finalTracks.push(...newTrack);
+      }
+
+      socket.current.emit("update-tracks", {
+        tracks: finalTracks,
+      });
+      return finalTracks;
     });
-    setTracks([...tracks, ...newTrack]);
   };
 
   const removeTrack = (id: string) => {

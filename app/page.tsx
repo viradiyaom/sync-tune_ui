@@ -27,7 +27,7 @@ const Container = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white p-4">
         <Loader className="animate-spin" />
-        <div>
+        <div className="text-center">
           Please wait wile we connect to server, it may take few seconds
         </div>
       </div>
