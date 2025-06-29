@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useAppContext } from "@/context/AppContext";
 import { shareRoom } from "@/lib/utils";
 import { DropdownMenuTrigger } from "@radix-ui/react-dropdown-menu";
 import { Reorder } from "framer-motion";
@@ -12,7 +13,12 @@ import {
   Pause,
   Play,
   Share2,
+  SkipBack,
+  SkipForward,
   Trash2,
+  Volume,
+  Volume2,
+  VolumeOff,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "react-toastify";
@@ -24,11 +30,13 @@ import {
   DropdownMenuItem,
 } from "../ui/dropdown-menu";
 import NewTrack from "./new-track";
+import { Progress } from "../ui/progress";
+import { Slider } from "../ui/slider";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { Checkbox } from "../ui/checkbox";
 
 const SOCKET_URL =
   process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3000";
-
-const API_KEY = process.env.NEXT_PUBLIC_YT_API_KEY;
 
 interface Track {
   id: string;
@@ -37,23 +45,35 @@ interface Track {
   videoId?: string;
 }
 
+const initialRoomConfig = {
+  roomId: "",
+  password: "",
+  allowMemberToPlay: true,
+  allowMemberControlVolume: true,
+  allowMemberToSync: true,
+};
+
 const Host = () => {
   const ytPlayer = useRef<any>(null);
-  const socketRef = useRef<any>(null);
+  console.log("🚀 - Host - ytPlayer:", ytPlayer);
+  const { socket } = useAppContext();
   const [roomId, setRoomId] = useState("");
+  const [volume, setVolume] = useState(100);
   const [loading, setLoading] = useState(false);
-  const [newRoomId, setNewRoomId] = useState("");
+  const [roomConfig, setRoomConfig] = useState(initialRoomConfig);
+
+  // const [newRoomId, setNewRoomId] = useState("");
   const [tracks, setTracks] = useState<Track[]>([]);
   const [activeVideo, setActiveVideo] = useState("");
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(-1);
 
   useEffect(() => {
-    socketRef.current = io(SOCKET_URL);
-    socketRef.current.on("join-room", (data: any) => {
+    socket.current = io(SOCKET_URL);
+    socket.current.on("join-room", (data: any) => {
       setLoading(false);
       if (data.type === "SUCCESS") {
-        setNewRoomId("");
+        setRoomConfig(structuredClone(initialRoomConfig));
         setRoomId(data.roomId);
       } else {
         toast.error(data.message || "Something went wrong");
@@ -61,10 +81,16 @@ const Host = () => {
       setTimeout(setupPlayer, 1000);
     });
 
-    socketRef.current.on("room-tracks", (tracks: Track[]) => {
+    socket.current.on("room-tracks", (tracks: Track[]) => {
       if (tracks) setTracks(tracks);
     });
-    socketRef.current.on("update-playing-status", (value: boolean) => {
+
+    socket.current.on("update-volume", (value: number) => {
+      ytPlayer.current.setVolume(value);
+      setVolume(value);
+    });
+
+    socket.current.on("update-playing-status", (value: boolean) => {
       if (value) {
         ytPlayer.current.playVideo();
       } else {
@@ -73,13 +99,13 @@ const Host = () => {
       setIsPlaying(value);
     });
 
-    socketRef.current.on(
+    socket.current.on(
       "update-current-playing",
       ({ index }: { index: number }) => {
-        if (index && index >= 0) {
+        if (index !== undefined && index >= 0) {
           setCurrentTrackIndex((e) => {
             if (e === index) {
-              ytPlayer.current.pauseVideo();
+              ytPlayer.current?.pauseVideo();
             }
             return index;
           });
@@ -87,20 +113,14 @@ const Host = () => {
       }
     );
 
-    socketRef.current.on("sync-request", async () => {
-      // let i = 0;
-      // const interval = setInterval(async () => {
-      //   if (i > 3) {
-      //     return clearInterval(interval);
-      //   }
+    socket.current.on("sync-request", async () => {
       const player = ytPlayer.current;
-      console.log("🚀 - //interval - player:", player);
       const time = +new Date();
       const currentTime = await player.getCurrentTime();
       const playerState = await player.getPlayerState();
 
       setActiveVideo((videoId) => {
-        socketRef.current.emit("sync-response", {
+        socket.current.emit("sync-response", {
           type: "TIME",
           playerState,
           time,
@@ -109,12 +129,15 @@ const Host = () => {
         });
         return videoId;
       });
-
-      //   i++;
-      // }, 1000);
     });
+
+    const timeout = setTimeout(() => {
+      socket.current.emit("client-active");
+    }, 1000 * 60 * 10);
+
     return () => {
-      socketRef.current.disconnect();
+      clearTimeout(timeout);
+      socket.current.disconnect();
     };
   }, []);
 
@@ -124,7 +147,7 @@ const Host = () => {
 
   useEffect(() => {
     if (currentTrackIndex < 0 || !roomId) return;
-    socketRef.current.emit("update-current-playing", {
+    socket.current.emit("update-current-playing", {
       index: currentTrackIndex,
     });
   }, [currentTrackIndex, roomId]);
@@ -143,8 +166,11 @@ const Host = () => {
     })();
   }, [currentTrackIndex]);
 
-  const setupPlayer = () => {
-    const player = YouTubePlayer("video-player", { width: 300, height: 180 });
+  const setupPlayer = async () => {
+    const player = YouTubePlayer("video-player", {
+      width: 300,
+      height: 180,
+    });
     player.on("stateChange", async (event: any) => {
       const currentTime = event.target.getCurrentTime();
 
@@ -153,32 +179,50 @@ const Host = () => {
       }
 
       if (event.data === 2 && currentTime > 0) {
-        socketRef.current.emit("update-playing-status", {
+        socket.current.emit("update-playing-status", {
           value: false,
         });
       }
       if (event.data === 1) {
-        socketRef.current.emit("update-playing-status", {
+        socket.current.emit("update-playing-status", {
           value: true,
         });
       }
     });
+    // player.on("volumeChange", ({ data }: any) => {
+    //   const v = data.muted ? 0 : data.volume;
+    //   setVolume(v);
+    //   socket.current.emit("update-volume", v);
+    // });
     ytPlayer.current = player;
+    const v = await player.getVolume();
+    socket.current.emit("update-volume", v);
   };
 
   const createRoom = () => {
     setLoading(true);
-    socketRef.current.emit("create-room", newRoomId);
+    socket.current.emit("create-room", roomConfig);
   };
 
-  const addTrack = (newTrack: Track[]) => {
-    socketRef.current.emit("add-track", {
-      tracks: newTrack,
+  const addTrack = (newTrack: Track[], addNext = false) => {
+    setTracks((prev) => {
+      const finalTracks = [...prev];
+
+      if (addNext) {
+        finalTracks.splice(currentTrackIndex + 1, 0, ...newTrack);
+      } else {
+        finalTracks.push(...newTrack);
+      }
+
+      socket.current.emit("update-tracks", {
+        tracks: finalTracks,
+      });
+      return finalTracks;
     });
-    setTracks([...tracks, ...newTrack]);
   };
 
   const selectTrack = (index: number) => {
+    if (index < 0 || index > tracks.length - 1) return;
     setIsPlaying(true);
     setCurrentTrackIndex((e) => {
       if (!isPlaying) {
@@ -196,91 +240,180 @@ const Host = () => {
   const removeTrack = (id: string) => {
     const newTracks = tracks.filter((track) => track.id !== id);
     setTracks(newTracks);
-    socketRef.current.emit("update-tracks", {
+    socket.current.emit("update-tracks", {
       tracks: newTracks,
     });
   };
 
-  //   const addRelativeVideos = async (videoId: string) => {
-  //     // const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=50&relatedToVideoId=${videoId}&type=video&key=${API_KEY}`;
+  const clearAllTrack = () => {
+    setTracks([]);
+    socket.current.emit("update-tracks", {
+      tracks: [],
+    });
+  };
 
-  //     const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&relatedToVideoId=jcAn44985E0&maxResults=10&key=${API_KEY}
-  // `;
-  //     fetch(url)
-  //       .then((res) => res.json())
-  //       .then((data) => {
-  //         console.log("🚀 - .then - data:", data);
-  //         const songs = data.items.map((item: any) => ({
-  //           id: item.id.videoId,
-  //           title: item.snippet.title,
-  //           videoId: item.id.videoId,
-  //           thumbnail: item.snippet.thumbnails?.medium?.url || "",
-  //           channelTitle: item.snippet.channelTitle,
-  //           url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
-  //         }));
-  //       })
-  //       .catch((err) => console.error("Failed to fetch related songs", err));
-  //   };
+  const handleChange = (key: keyof typeof roomConfig, value: any) => {
+    setRoomConfig((prev) => ({ ...prev, [key]: value }));
+  };
 
   if (!roomId)
     return (
       <>
-        <h1 className="text-3xl font-bold mb-6">Create Room Id</h1>
-        <div className="flex gap-2">
-          <Input
-            id="roomId"
-            placeholder="RoomId"
-            value={newRoomId}
-            onChange={(e) => setNewRoomId(e.target.value.toUpperCase())}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") createRoom();
-            }}
-            className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
-          />
-          <Button onClick={createRoom} disabled={!newRoomId || loading}>
-            Create Room
-          </Button>
-        </div>
+        <h1 className="text-3xl font-bold mb-6">Create Room</h1>
+        <Card className="bg-black/20 backdrop-blur-sm border-white/10 ">
+          <CardContent className="p-6 flex flex-col gap-3 min-w-[400px] justify-center items-center">
+            <Input
+              id="roomId"
+              placeholder="Room ID"
+              value={roomConfig.roomId}
+              onChange={(e) =>
+                handleChange("roomId", e.target.value.toUpperCase())
+              }
+              onKeyDown={(e) => {
+                if (e.key === "Enter") createRoom();
+              }}
+              className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+            />
+
+            {/* <Input
+              id="password"
+              placeholder="Password (optional)"
+              type="password"
+              value={roomConfig.password}
+              onChange={(e) => handleChange("password", e.target.value)}
+              className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
+            /> */}
+
+            <div className="w-full flex items-start space-x-2 mt-2">
+              <Checkbox
+                id="allow-play"
+                checked={roomConfig.allowMemberToPlay}
+                onCheckedChange={(checked) =>
+                  handleChange("allowMemberToPlay", checked)
+                }
+              />
+              <label htmlFor="allow-play" className="text-white -mt-1">
+                Allow members to play
+              </label>
+            </div>
+
+            <div className="w-full flex items-start space-x-2">
+              <Checkbox
+                id="allow-volume"
+                checked={roomConfig.allowMemberControlVolume}
+                onCheckedChange={(checked) =>
+                  handleChange("allowMemberControlVolume", checked)
+                }
+              />
+              <label htmlFor="allow-volume" className="text-white -mt-1">
+                Allow members to control volume
+              </label>
+            </div>
+            <div className="w-full flex items-start space-x-2">
+              <Checkbox
+                id="allow-volume"
+                checked={roomConfig.allowMemberToSync}
+                onCheckedChange={(checked) =>
+                  handleChange("allowMemberToSync", checked)
+                }
+              />
+              <label htmlFor="allow-volume" className="text-white -mt-1">
+                Allow members to sync with host
+              </label>
+            </div>
+
+            <Button
+              onClick={createRoom}
+              disabled={!roomConfig.roomId || loading}
+            >
+              Create Room
+            </Button>
+          </CardContent>
+        </Card>
       </>
     );
 
   return (
-    <div className="max-w-[1500px] w-full mx-auto space-y-6">
-      <h1 className="text-4xl font-bold text-white text-center mb-8">
-        Sync Tune
-      </h1>
+    <div className="max-w-[1500px] w-full mx-auto space-y-6 flex flex-col flex-1">
+      <h1 className="text-4xl font-bold text-white text-center">Sync Tune</h1>
 
-      <div className="flex max-md:flex-col gap-4 w-full">
+      <div className="flex max-md:flex-col gap-4 w-full flex-1">
         <div className="flex-1 space-y-4 md:max-w-[500px]">
           <Card className="bg-black/20 backdrop-blur-sm border-white/10 ">
-            <CardContent className="p-6 flex justify-between items-center">
-              <p className="font-bold text-white">Joining Code : {roomId}</p>
-              <button onClick={() => shareRoom(roomId)}>
-                <Share2 className="stroke-white" />
-              </button>
-            </CardContent>
-          </Card>
-          <Card className="bg-black/20 backdrop-blur-sm border-white/10 ">
-            <CardContent className="p-6 flex justify-center items-center">
+            <CardContent className="p-6 flex flex-col justify-center items-center">
               <div id="video-player" />
+              <div className="flex items-center justify-between gap-4 pt-4 mt-4 border-t w-full px-3">
+                <div className="w-10" />
+                <div className="flex gap-4 items-center">
+                  <button
+                    className="hover:bg-white/20 size-10 flex justify-center items-center rounded-full transition-all"
+                    onClick={() => selectTrack(currentTrackIndex - 1)}
+                  >
+                    <SkipBack className="stroke-white" size={18} />
+                  </button>
+                  <button
+                    onClick={() => selectTrack(currentTrackIndex)}
+                    className="bg-white/20 border border-white/30 size-14 flex justify-center items-center rounded-full"
+                  >
+                    {isPlaying ? (
+                      <Pause className="stroke-white" />
+                    ) : (
+                      <Play className="stroke-white" />
+                    )}
+                  </button>
+                  <button
+                    className="hover:bg-white/10 size-10 flex justify-center items-center rounded-full transition-all"
+                    onClick={() => selectTrack(currentTrackIndex + 1)}
+                  >
+                    <SkipForward className="stroke-white" size={18} />
+                  </button>
+                </div>
+                <button onClick={() => shareRoom(roomId)}>
+                  <Share2 className="stroke-white" />
+                </button>
+              </div>
+              <div className="mt-2.5 -mb-3 flex w-full gap-4 px-3">
+                <button
+                  onClick={() => {
+                    socket.current.emit("update-volume", volume === 0 ? 50 : 0);
+                  }}
+                >
+                  {volume === 0 ? (
+                    <VolumeOff className="stroke-white" />
+                  ) : (
+                    <Volume2 className="stroke-white" />
+                  )}
+                </button>
+                <Slider
+                  step={1}
+                  max={100}
+                  value={[volume]}
+                  onValueChange={(v) =>
+                    socket.current.emit("update-volume", v[0])
+                  }
+                />
+              </div>
             </CardContent>
           </Card>
           <NewTrack onAdd={addTrack} />
         </div>
         <Card className="bg-black/20 backdrop-blur-sm border-white/10 flex-[2]">
-          <CardHeader>
-            <CardTitle className="text-white !flex justify-between">
-              Playlist ({tracks.length} tracks)
-            </CardTitle>
+          <CardHeader className="!py-4">
+            <div className="flex justify-between items-center">
+              <CardTitle className="text-white">
+                Playlist ({tracks.length} tracks)
+              </CardTitle>
+              <Button onClick={clearAllTrack}>Clear All</Button>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="max-h-[calc(100vh-205px)] overflow-y-auto">
+            <div className="max-h-[calc(100vh-194px)] overflow-y-auto">
               <Reorder.Group
                 axis="y"
                 values={tracks}
                 onReorder={(newOrder) => {
                   setTracks(newOrder);
-                  socketRef.current.emit("update-tracks", {
+                  socket.current.emit("update-tracks", {
                     tracks: newOrder,
                   });
                 }}
@@ -351,7 +484,7 @@ const Host = () => {
                       <DropdownMenuContent
                         side="bottom"
                         align="end"
-                        className="bg-black border border-white/10 rounded-md p-1 min-w-[140px] z-50"
+                        className="bg-white border border-white/10 rounded-md p-1 min-w-[140px] z-50"
                       >
                         <DropdownMenuItem
                           onClick={() => {
@@ -360,11 +493,11 @@ const Host = () => {
                             newOrder.splice(currentTrackIndex + 1, 0, track);
 
                             setTracks(newOrder);
-                            socketRef.current.emit("update-tracks", {
+                            socket.current.emit("update-tracks", {
                               tracks: newOrder,
                             });
                           }}
-                          className="px-2 py-1.5 text-sm text-white hover:bg-white/10 cursor-pointer"
+                          className="px-2 py-1.5 text-sm  hover:bg-white/10 cursor-pointer"
                         >
                           Play Next
                         </DropdownMenuItem>
@@ -375,11 +508,11 @@ const Host = () => {
                             newOrder.splice(currentTrackIndex + 1, 0, track);
                             setCurrentTrackIndex(currentTrackIndex + 1);
                             setTracks(newOrder);
-                            socketRef.current.emit("update-tracks", {
+                            socket.current.emit("update-tracks", {
                               tracks: newOrder,
                             });
                           }}
-                          className="px-2 py-1.5 text-sm text-white hover:bg-white/10 cursor-pointer"
+                          className="px-2 py-1.5 text-sm  hover:bg-white/10 cursor-pointer"
                         >
                           Stop and Play
                         </DropdownMenuItem>

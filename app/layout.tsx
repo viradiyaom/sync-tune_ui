@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
+import { ToastContainer } from "react-toastify";
 import "./globals.css";
-import { ToastContainer, toast } from "react-toastify";
 
 export const metadata: Metadata = {
   title: "Sync Tune",

@@ -3,20 +3,39 @@
 import Host from "@/components/page/host";
 import Member from "@/components/page/member";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { AppProvider, useAppContext } from "@/context/AppContext";
+import { ArrowLeft, Loader, Loader2 } from "lucide-react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 const Container = () => {
   const router = useRouter();
+  const { connected } = useAppContext();
   const [role, setRole] = useState("");
   const searchParams = useSearchParams();
+  const [loading, setLoading] = useState(true);
 
-  const memberId = useMemo(() => searchParams.get("memberId"), [searchParams]);
+  useEffect(() => {
+    const value = searchParams.get("memberId");
+    if (value) {
+      setRole("member");
+    }
+    setLoading(false);
+  }, [searchParams]);
+
+  if (loading || !connected)
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white p-4">
+        <Loader className="animate-spin" />
+        <div>
+          Please wait wile we connect to server, it may take few seconds
+        </div>
+      </div>
+    );
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-purple-900 via-blue-900 to-indigo-900 text-white p-4">
-      {role || memberId ? (
+      {role ? (
         <>
           <Button
             className="absolute top-4 left-4"
@@ -28,7 +47,7 @@ const Container = () => {
             <ArrowLeft />
           </Button>
           {role === "host" && <Host />}
-          {(role === "member" || memberId) && <Member />}
+          {role === "member" && <Member />}
         </>
       ) : (
         <>
@@ -42,6 +61,7 @@ const Container = () => {
     </div>
   );
 };
+
 export default function MusicPlayer() {
   return (
     <Suspense
@@ -51,7 +71,9 @@ export default function MusicPlayer() {
         </div>
       }
     >
-      <Container />
+      <AppProvider>
+        <Container />
+      </AppProvider>
     </Suspense>
   );
 }

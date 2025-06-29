@@ -9,7 +9,7 @@ import { Plus } from "lucide-react";
 import { useState } from "react";
 
 type Props = {
-  onAdd: (v: Track[]) => void;
+  onAdd: (v: Track[], t: boolean) => void;
 };
 
 const API_KEY = process.env.NEXT_PUBLIC_YT_API_KEY;
@@ -18,7 +18,7 @@ const NewTrack = ({ onAdd }: Props) => {
   const [newTrackUrl, setNewTrackUrl] = useState("");
   const [newTrackTitle, setNewTrackTitle] = useState("");
 
-  const addTrack = () => {
+  const addTrack = (addNext = false) => {
     if (!newTrackUrl) return;
     const isPlaylist = newTrackUrl.includes("playlist");
     if (isPlaylist) {
@@ -34,7 +34,7 @@ const NewTrack = ({ onAdd }: Props) => {
             url: "",
             videoId: item.snippet.resourceId.videoId,
           }));
-          onAdd(songs);
+          onAdd(songs, addNext);
         });
     } else {
       const videoId = extractYouTubeId(newTrackUrl);
@@ -48,7 +48,7 @@ const NewTrack = ({ onAdd }: Props) => {
         url: newTrackUrl,
         videoId: videoId || undefined,
       };
-      onAdd([newTrack]);
+      onAdd([newTrack], addNext);
     }
     setNewTrackUrl("");
     setNewTrackTitle("");
@@ -72,10 +72,24 @@ const NewTrack = ({ onAdd }: Props) => {
           onChange={(e) => setNewTrackUrl(e.target.value)}
           className="bg-white/10 border-white/20 text-white placeholder:text-gray-400"
         />
-        <Button onClick={addTrack} disabled={!newTrackUrl} className="w-full">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Track
-        </Button>
+        <div className="flex gap-4">
+          <Button
+            onClick={() => addTrack(true)}
+            disabled={!newTrackUrl}
+            className="w-full"
+          >
+            <Plus className="w-4 h-4" />
+            Add Next
+          </Button>
+          <Button
+            onClick={() => addTrack()}
+            disabled={!newTrackUrl}
+            className="w-full"
+          >
+            <Plus className="w-4 h-4" />
+            Add at End
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );
