@@ -212,7 +212,7 @@ const Member = () => {
     return (
       <>
         <Loader className="animate-spin" />
-        <div>
+        <div className="text-center">
           Please wait wile we connect to server, it may take few seconds
         </div>
       </>

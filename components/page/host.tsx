@@ -131,18 +131,30 @@ const Host = () => {
       });
     });
 
-    const timeout = setTimeout(() => {
-      socket.current.emit("client-active");
-    }, 1000 * 60 * 10);
+    // const timeout = setTimeout(() => {
+    //   socket.current.emit("client-active");
+    // }, 1000 * 60 * 10);
 
     return () => {
-      clearTimeout(timeout);
+      // clearTimeout(timeout);
       socket.current.disconnect();
     };
   }, []);
 
   useEffect(() => {
     document.getElementById("roomId")?.focus();
+
+    let socketInstance = io(SOCKET_URL);
+
+    const interval = setInterval(() => {
+      socketInstance.disconnect();
+      socketInstance = io(SOCKET_URL);
+    }, 1000 * 60 * 10);
+
+    return () => {
+      clearInterval(interval);
+      socketInstance.disconnect();
+    };
   }, []);
 
   useEffect(() => {
