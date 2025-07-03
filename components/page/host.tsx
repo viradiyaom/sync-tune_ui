@@ -131,12 +131,7 @@ const Host = () => {
       });
     });
 
-    // const timeout = setTimeout(() => {
-    //   socket.current.emit("client-active");
-    // }, 1000 * 60 * 10);
-
     return () => {
-      // clearTimeout(timeout);
       socket.current.disconnect();
     };
   }, []);
@@ -144,16 +139,12 @@ const Host = () => {
   useEffect(() => {
     document.getElementById("roomId")?.focus();
 
-    let socketInstance = io(SOCKET_URL);
-
     const interval = setInterval(() => {
-      socketInstance.disconnect();
-      socketInstance = io(SOCKET_URL);
-    }, 1000 * 60 * 10);
+      fetch(`${SOCKET_URL}/ping`).then((res) => {});
+    }, 1000 * 60 * 10); // 10 min
 
     return () => {
       clearInterval(interval);
-      socketInstance.disconnect();
     };
   }, []);
 
